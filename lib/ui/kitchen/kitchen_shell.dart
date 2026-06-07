@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:kiosk/models/models.dart';
 import 'package:kiosk/providers/providers.dart';
 
+import 'package:kiosk/ui/common/access_message_card.dart';
+
 import 'kitchen_auth_guard.dart';
 import 'kitchen_order_watcher.dart';
 import 'kitchen_orders_strip.dart';
@@ -78,18 +80,12 @@ class _KitchenShellState extends ConsumerState<KitchenShell> {
     if (!session.isLoggedIn || session.storeId == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('주방')),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('관리자 로그인이 필요합니다.'),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () => context.go('/'),
-                child: const Text('관리자 로그인으로'),
-              ),
-            ],
-          ),
+        body: AccessMessageCard(
+          icon: Icons.lock_outline,
+          title: '로그인 필요',
+          message: '주방 화면은 관리자 로그인 후 이용할 수 있습니다.',
+          buttonLabel: '관리자 로그인으로',
+          onButtonPressed: () => context.go('/'),
         ),
       );
     }
@@ -99,14 +95,11 @@ class _KitchenShellState extends ConsumerState<KitchenShell> {
       final q = widget.expectedStoreId ?? '';
       return Scaffold(
         appBar: AppBar(title: const Text('주방')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              '로그인 매장($sid)과 주소의 storeId($q)가 다릅니다.',
-              textAlign: TextAlign.center,
-            ),
-          ),
+        body: AccessMessageCard(
+          icon: Icons.store_mall_directory_outlined,
+          title: '매장 불일치',
+          message: '로그인 매장($sid)과 주소의 storeId($q)가 다릅니다.\n'
+              '올바른 매장으로 로그인하거나 URL을 확인하세요.',
         ),
       );
     }

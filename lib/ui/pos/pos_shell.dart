@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kiosk/providers/providers.dart';
+import 'package:kiosk/ui/common/access_message_card.dart';
 import 'package:kiosk/ui/pos/pos_auth_guard.dart';
 import 'package:kiosk/ui/pos/pos_table_grid.dart';
 import 'package:kiosk/ui/pos/pos_table_status.dart';
@@ -25,18 +26,12 @@ class PosShell extends ConsumerWidget {
     if (!session.isLoggedIn || session.storeId == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('POS')),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('관리자 로그인이 필요합니다.'),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () => context.go('/'),
-                child: const Text('관리자 로그인으로'),
-              ),
-            ],
-          ),
+        body: AccessMessageCard(
+          icon: Icons.lock_outline,
+          title: '로그인 필요',
+          message: 'POS 화면은 관리자 로그인 후 이용할 수 있습니다.',
+          buttonLabel: '관리자 로그인으로',
+          onButtonPressed: () => context.go('/'),
         ),
       );
     }
@@ -46,14 +41,11 @@ class PosShell extends ConsumerWidget {
       final q = expectedStoreId ?? '';
       return Scaffold(
         appBar: AppBar(title: const Text('POS')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              '로그인 매장($sid)과 주소의 storeId($q)가 다릅니다.',
-              textAlign: TextAlign.center,
-            ),
-          ),
+        body: AccessMessageCard(
+          icon: Icons.store_mall_directory_outlined,
+          title: '매장 불일치',
+          message: '로그인 매장($sid)과 주소의 storeId($q)가 다릅니다.\n'
+              '올바른 매장으로 로그인하거나 URL을 확인하세요.',
         ),
       );
     }

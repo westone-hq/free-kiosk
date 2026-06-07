@@ -1,5 +1,4 @@
 // lib/ui/admin/admin_home_shell.dart
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,7 +7,6 @@ import 'package:kiosk/ui/admin/admin_sales_tab.dart';
 import 'package:kiosk/ui/admin/admin_settings_tab.dart';
 import 'package:kiosk/ui/admin/admin_store_tab.dart';
 import 'package:kiosk/ui/admin/admin_table_qr_tab.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 /// 3.2: 좌측 탭 + 우측 본문(6칸)
 class AdminHomeShell extends ConsumerWidget {
@@ -57,7 +55,7 @@ class AdminHomeShell extends ConsumerWidget {
           NavigationRail(
             selectedIndex: index,
             onDestinationSelected: (i) {
-              // 0 — POS · 3 — 주방: 같은 창에서 GoRouter 화면으로 (관리자 레일 혼선 방지).
+              ref.read(adminHomeTabIndexProvider.notifier).state = i;
               if (i == 0) {
                 context.go('/pos?storeId=$storeId');
                 return;
@@ -73,7 +71,6 @@ class AdminHomeShell extends ConsumerWidget {
                 );
                 return;
               }
-              ref.read(adminHomeTabIndexProvider.notifier).state = i;
             },
             labelType: extended
                 ? NavigationRailLabelType.none
@@ -154,7 +151,7 @@ class AdminHomeShell extends ConsumerWidget {
   }
 }
 
-// --- 0) 1.4 /pos (레일 탭 시 context.go — 본문은 예외·직접 URL 진입용)
+// --- 0·3·4) 별도 화면(/pos · /kitchen · /customer)으로 이동 안내
 class _TabOpenPosUrl extends ConsumerWidget {
   const _TabOpenPosUrl({required this.storeId});
 
@@ -162,153 +159,135 @@ class _TabOpenPosUrl extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final u = '/pos?storeId=$storeId';
-    return _LinkTabBody(
-      title: 'POS(테이블) 화면으로 이동',
-      line1: '1.4에서 정한 path: /pos',
-      line2: '열 URL: $u',
+    return _ScreenLaunchCard(
+      icon: Icons.point_of_sale_outlined,
+      title: '주문 · POS',
+      description: '테이블 현황, 결제, 자리 이동을 처리합니다.',
+      buttonLabel: 'POS 화면 열기',
       onPressed: () => context.go('/pos?storeId=$storeId'),
     );
   }
 }
 
-// --- 4) 1.4 /kitchen
 class _TabOpenKitchenUrl extends ConsumerWidget {
   const _TabOpenKitchenUrl({required this.storeId});
 
   final String storeId;
 
-  Future<void> _open(WidgetRef ref) async {
-    final uri = _buildRootChildPath('/kitchen', {
-      'storeId': storeId,
-    });
-    await _openUri(uri);
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final u = _buildRootChildPath('/kitchen', {'storeId': storeId});
-    return _LinkTabBody(
-      title: '주방 화면으로 이동',
-      line1: '1.4에서 정한 path: /kitchen',
-      line2: '열 URL: $u',
-      onPressed: () => _open(ref),
+    return _ScreenLaunchCard(
+      icon: Icons.soup_kitchen_outlined,
+      title: '주방',
+      description: '들어온 주문을 확인하고 조리 상태를 변경합니다.',
+      buttonLabel: '주방 화면 열기',
+      onPressed: () => context.go('/kitchen?storeId=$storeId'),
     );
   }
 }
 
-// --- 5) 1.4 /customer?storeId&tableNo
 class _TabOpenCustomerUrl extends ConsumerWidget {
   const _TabOpenCustomerUrl({required this.storeId});
 
   final String storeId;
 
-  Future<void> _open(WidgetRef ref) async {
-    final table = ref.read(appSettingsProvider).tableNo ?? '1';
-    final uri = _buildRootChildPath(
-      '/customer',
-      {
-        'storeId': storeId,
-        'tableNo': table,
-      },
-    );
-    await _openUri(uri);
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final table = ref.watch(appSettingsProvider).tableNo ?? '1';
-    final u = _buildRootChildPath(
-      '/customer',
-      {
-        'storeId': storeId,
-        'tableNo': table,
-      },
-    );
-    return _LinkTabBody(
-      title: '손님(소비자) 화면으로 이동',
-      line1: '1.4: /customer?storeId=&tableNo=',
-      line2: '2.4 `appSettings` 의 tableNo(없으면 1) 사용 → $u',
-      onPressed: () => _open(ref),
-    );
-  }
-}
-
-// --- 위젯+공통: 링크 열기
-class _LinkTabBody extends StatelessWidget {
-  const _LinkTabBody({
-    required this.title,
-    required this.line1,
-    required this.line2,
-    required this.onPressed,
-  });
-
-  final String title;
-  final String line1;
-  final String line2;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleLarge,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(line1, textAlign: TextAlign.center),
-              const SizedBox(height: 8),
-              SelectableText(
-                line2,
-                style: const TextStyle(fontSize: 12),
-              ),
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: onPressed,
-                icon: const Icon(Icons.open_in_new),
-                label: const Text('이 URL 열기'),
-              ),
-            ],
-          ),
-        ),
+    return _ScreenLaunchCard(
+      icon: Icons.smartphone_outlined,
+      title: '손님 주문',
+      description: '손님이 보는 메뉴·장바구니 화면입니다.',
+      detail: '테이블 $table번 · 설정 탭에서 번호 변경',
+      buttonLabel: '손님 화면 열기',
+      onPressed: () => context.go(
+        '/customer?storeId=$storeId&tableNo=$table',
       ),
     );
   }
 }
 
-/// 현재 앱 **호스트+포트** 를 유지하고 path+query만 바꾼 URI (1.4 path)
-Uri _buildRootChildPath(
-  String path,
-  Map<String, String> query,
-) {
-  final b = Uri.base;
-  return Uri(
-    scheme: b.scheme,
-    host: b.host,
-    port: b.hasPort ? b.port : null,
-    path: path,
-    queryParameters: query,
-  );
-}
+class _ScreenLaunchCard extends StatelessWidget {
+  const _ScreenLaunchCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.buttonLabel,
+    required this.onPressed,
+    this.detail,
+  });
 
-Future<void> _openUri(Uri uri) async {
-  if (kIsWeb) {
-    debugPrint('open: $uri');
-  }
-  final ok = await launchUrl(
-    uri,
-    webOnlyWindowName: '_blank',
-  );
-  if (!ok) {
-    debugPrint('launchUrl failed: $uri');
+  final IconData icon;
+  final String title;
+  final String description;
+  final String? detail;
+  final String buttonLabel;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Card(
+            elevation: 0,
+            color: cs.surfaceContainerLow,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: cs.outlineVariant),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(28, 32, 28, 28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 48, color: cs.primary),
+                  const SizedBox(height: 16),
+                  Text(
+                    title,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    description,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  if (detail != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      detail!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: onPressed,
+                      icon: const Icon(Icons.arrow_forward),
+                      label: Text(buttonLabel),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

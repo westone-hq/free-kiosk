@@ -141,7 +141,7 @@ class _AdminSettingsTabState extends ConsumerState<AdminSettingsTab> {
           decoration: const InputDecoration(
             labelText: 'tableNo — 손님 탭(4번) 기본 테이블',
             hintText: '1',
-            helperText: '4번 탭·「손님 URL 열기」에 쓰입니다.',
+            helperText: '4번 탭·「손님 화면 열기」에 쓰입니다.',
           ),
           onSubmitted: (v) {
             final t = v.trim();

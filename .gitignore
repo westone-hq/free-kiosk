@@ -26,7 +26,12 @@ migrate_working_dir/
 # Local web dev port (first-run auto save)
 .web_port
 
-# Flutter/Dart/Pub related
+# Runtime data (accounts, orders — local dev)
+data/runtime/*
+!data/runtime/.gitkeep
+
+# Flutter dev Chrome profile
+.chrome_profile/
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
