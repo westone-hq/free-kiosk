@@ -4,12 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:kiosk/ui/admin/admin_app_entry.dart';
 import 'package:kiosk/ui/admin/admin_signup_page.dart';
 import 'package:kiosk/ui/customer/customer_order_page.dart';
+import 'package:kiosk/ui/kitchen/kitchen_shell.dart';
 import 'package:kiosk/providers/scoped_store_provider.dart';
 
 /// 다이얼로그는 TabBarView 안 context가 아니라 이 키로 띄웁니다.
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
-/// `/` = 내 매장, `/signup` = 회원가입, `/customer` = 손님 (5장에서 `/kitchen` 등 추가)
+/// `/` = 내 매장, `/signup` = 회원가입, `/customer` = 손님, `/kitchen` = 주방
 final GoRouter kioskRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
   routes: <RouteBase>[
@@ -43,6 +44,19 @@ final GoRouter kioskRouter = GoRouter(
             storeId: storeId,
             tableNo: tableNo,
           ),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/kitchen',
+      builder: (BuildContext context, GoRouterState state) {
+        final storeId = state.uri.queryParameters['storeId']?.trim();
+        if (storeId == null || storeId.isEmpty) {
+          return const KitchenShell();
+        }
+        return StoreScope(
+          storeId: storeId,
+          child: KitchenShell(expectedStoreId: storeId),
         );
       },
     ),
