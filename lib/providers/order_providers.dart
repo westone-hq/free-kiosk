@@ -5,7 +5,6 @@ import 'package:kiosk/services/services.dart';
 
 import 'scoped_store_provider.dart';
 
-// 주문 읽기/저장 서비스를 provider로 노출 (현재 scoped storeId 기준)
 final orderBookServiceProvider = Provider<OrderBookService>((ref) {
   final storeId = ref.watch(scopedStoreIdProvider);
   if (storeId == null || storeId.isEmpty) {
@@ -28,6 +27,11 @@ class ActiveOrdersController extends StateNotifier<List<OrderHeader>> {
 
   Future<void> reload() async {
     await _load();
+  }
+
+  Future<void> _syncFromDisk() async {
+    final doc = await _service.loadActiveOrders();
+    state = doc.orders;
   }
 
   /// 저장본을 먼저 읽어 합칩니다. (여러 탭/창에서 주문할 때 덮어쓰기 방지)
@@ -56,6 +60,180 @@ class ActiveOrdersController extends StateNotifier<List<OrderHeader>> {
             storeId: order.storeId,
             tableNo: order.tableNo,
             status: nextStatus,
+            createdAt: order.createdAt,
+            note: order.note,
+            lines: order.lines,
+          )
+        else
+          order,
+    ];
+    await _save();
+  }
+
+  static bool _isOpen(OrderHeader order) {
+    return order.status != OrderStatus.paid &&
+        order.status != OrderStatus.cancelled;
+  }
+
+  OrderHeader? _findOrder(String orderId) {
+    for (final order in state) {
+      if (order.id == orderId) {
+        return order;
+      }
+    }
+    return null;
+  }
+
+  OrderHeader _copyOrder(OrderHeader order, {List<OrderLine>? lines}) {
+    return OrderHeader(
+      id: order.id,
+      storeId: order.storeId,
+      tableNo: order.tableNo,
+      status: order.status,
+      createdAt: order.createdAt,
+      note: order.note,
+      lines: lines ?? order.lines,
+    );
+  }
+
+  Future<void> updateOrderLines(String orderId, List<OrderLine> lines) async {
+    await _syncFromDisk();
+    final order = _findOrder(orderId);
+    if (order == null) {
+      return;
+    }
+    if (lines.isEmpty) {
+      await removeOrder(orderId);
+      return;
+    }
+    state = [
+      for (final o in state)
+        if (o.id == orderId) _copyOrder(order, lines: lines) else o,
+    ];
+    await _save();
+  }
+
+  Future<void> decreaseLineQuantity(String orderId, int lineIndex) async {
+    await _syncFromDisk();
+    final order = _findOrder(orderId);
+    if (order == null || lineIndex < 0 || lineIndex >= order.lines.length) {
+      return;
+    }
+    final next = <OrderLine>[];
+    for (var i = 0; i < order.lines.length; i++) {
+      final line = order.lines[i];
+      if (i == lineIndex) {
+        if (line.quantity > 1) {
+          next.add(
+            OrderLine(
+              menuId: line.menuId,
+              nameSnapshot: line.nameSnapshot,
+              unitPrice: line.unitPrice,
+              quantity: line.quantity - 1,
+            ),
+          );
+        }
+      } else {
+        next.add(line);
+      }
+    }
+    await updateOrderLines(orderId, next);
+  }
+
+  Future<void> removeLine(String orderId, int lineIndex) async {
+    await _syncFromDisk();
+    final order = _findOrder(orderId);
+    if (order == null || lineIndex < 0 || lineIndex >= order.lines.length) {
+      return;
+    }
+    final next = [
+      for (var i = 0; i < order.lines.length; i++)
+        if (i != lineIndex) order.lines[i],
+    ];
+    await updateOrderLines(orderId, next);
+  }
+
+  Future<void> _appendArchive(OrderHeader entry) async {
+    final archive = await _service.loadArchive();
+    await _service.saveArchive(
+      OrderArchiveDocument(
+        version: archive.version,
+        entries: [...archive.entries, entry],
+      ),
+    );
+  }
+
+  Future<void> payOrderFull(String orderId) async {
+    await _syncFromDisk();
+    final order = _findOrder(orderId);
+    if (order == null || !_isOpen(order)) {
+      return;
+    }
+    await removeOrder(orderId);
+    await _appendArchive(
+      OrderHeader(
+        id: order.id,
+        storeId: order.storeId,
+        tableNo: order.tableNo,
+        status: OrderStatus.paid,
+        createdAt: order.createdAt,
+        note: order.note,
+        lines: order.lines,
+      ),
+    );
+  }
+
+  Future<void> paySelectedLines(String orderId, Set<int> lineIndexes) async {
+    await _syncFromDisk();
+    final order = _findOrder(orderId);
+    if (order == null || lineIndexes.isEmpty) {
+      return;
+    }
+    final paidLines = <OrderLine>[];
+    final remain = <OrderLine>[];
+    for (var i = 0; i < order.lines.length; i++) {
+      if (lineIndexes.contains(i)) {
+        paidLines.add(order.lines[i]);
+      } else {
+        remain.add(order.lines[i]);
+      }
+    }
+    if (paidLines.isEmpty) {
+      return;
+    }
+    final paidEntry = OrderHeader(
+      id: '${order.id}_partial_${DateTime.now().millisecondsSinceEpoch}',
+      storeId: order.storeId,
+      tableNo: order.tableNo,
+      status: OrderStatus.paid,
+      createdAt: DateTime.now(),
+      note: order.note,
+      lines: paidLines,
+    );
+    await _appendArchive(paidEntry);
+    if (remain.isEmpty) {
+      await removeOrder(orderId);
+      return;
+    }
+    await updateOrderLines(orderId, remain);
+  }
+
+  Future<void> moveOpenOrdersToTable({
+    required String storeId,
+    required String fromTableNo,
+    required String toTableNo,
+  }) async {
+    await _syncFromDisk();
+    state = [
+      for (final order in state)
+        if (_isOpen(order) &&
+            order.storeId == storeId &&
+            order.tableNo == fromTableNo)
+          OrderHeader(
+            id: order.id,
+            storeId: order.storeId,
+            tableNo: toTableNo,
+            status: order.status,
             createdAt: order.createdAt,
             note: order.note,
             lines: order.lines,
