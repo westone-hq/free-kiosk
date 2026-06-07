@@ -235,10 +235,6 @@ class _AdminStoreTabState extends ConsumerState<AdminStoreTab> {
                                 },
                               ),
                             ),
-                            OutlinedButton(
-                              onPressed: _addCategory,
-                              child: const Text('카테고리 추가'),
-                            ),
                           ],
                         ),
                       ),
