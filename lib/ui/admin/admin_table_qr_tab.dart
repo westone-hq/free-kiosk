@@ -4,8 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kiosk/models/models.dart';
 import 'package:kiosk/providers/providers.dart';
+import 'package:kiosk/router/app_router.dart';
 import 'package:kiosk/services/services.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'package:kiosk/ui/admin/customer_qr_panel.dart';
 
 /// 3.4: stores/{storeId}/tables.json 편집 + 손님 /customer? URL QR
 class AdminTableQrTab extends ConsumerStatefulWidget {
@@ -26,10 +27,6 @@ class _AdminTableQrTabState extends ConsumerState<AdminTableQrTab> {
     }
     _inited = true;
     _list = List<TableInfo>.from(fromProvider);
-  }
-
-  void _reinit() {
-    _inited = false;
   }
 
   String _buildCustomerUrl(String storeId, String tableNo) {
@@ -64,8 +61,12 @@ class _AdminTableQrTabState extends ConsumerState<AdminTableQrTab> {
     final labelCtrl = TextEditingController(text: t.label ?? '');
     final gridXCtrl = TextEditingController(text: '${t.gridX ?? ''}');
     final gridYCtrl = TextEditingController(text: '${t.gridY ?? ''}');
+    final nav = rootNavigatorKey.currentContext;
+    if (nav == null) {
+      return;
+    }
     final ok = await showDialog<bool>(
-      context: context,
+      context: nav,
       builder: (ctx) => AlertDialog(
         title: const Text('테이블 편집'),
         content: Column(
@@ -120,24 +121,36 @@ class _AdminTableQrTabState extends ConsumerState<AdminTableQrTab> {
 
   Future<void> _showQr(String storeId, TableInfo t) async {
     final url = _buildCustomerUrl(storeId, t.tableNo);
-    if (!context.mounted) {
+    if (url.trim().isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('QR URL을 만들 수 없습니다.')),
+        );
+      }
+      return;
+    }
+    final nav = rootNavigatorKey.currentContext;
+    if (nav == null) {
       return;
     }
     await showDialog<void>(
-      context: context,
+      context: nav,
+      barrierDismissible: true,
       builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(ctx).colorScheme.surface,
         title: Text('QR — 테이블 ${t.tableNo}'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              QrImageView(
-                data: url,
-                size: 200,
-              ),
-              const SizedBox(height: 12),
-              SelectableText(url, style: const TextStyle(fontSize: 12)),
-            ],
+        content: SizedBox(
+          width: 320,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(child: CustomerQrPanel(data: url)),
+                const SizedBox(height: 12),
+                SelectableText(url, style: const TextStyle(fontSize: 12)),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -145,11 +158,9 @@ class _AdminTableQrTabState extends ConsumerState<AdminTableQrTab> {
             onPressed: () {
               Clipboard.setData(ClipboardData(text: url));
               Navigator.pop(ctx);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('URL을 복사했습니다.')),
-                );
-              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('URL을 복사했습니다.')),
+              );
             },
             child: const Text('URL 복사'),
           ),
@@ -176,7 +187,6 @@ class _AdminTableQrTabState extends ConsumerState<AdminTableQrTab> {
       return;
     }
     ref.invalidate(tablesProvider);
-    setState(_reinit);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('테이블 목록을 저장했습니다.')),
@@ -206,13 +216,14 @@ class _AdminTableQrTabState extends ConsumerState<AdminTableQrTab> {
           children: [
             Padding(
               padding: const EdgeInsets.all(8),
-              child: Row(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   FilledButton(
                     onPressed: _saveToDisk,
                     child: const Text('테이블 목록 저장'),
                   ),
-                  const SizedBox(width: 8),
                   OutlinedButton(
                     onPressed: () {
                       setState(() {
@@ -235,37 +246,62 @@ class _AdminTableQrTabState extends ConsumerState<AdminTableQrTab> {
             ),
             const Divider(),
             Expanded(
-              child: ListView.builder(
+              child: ListView.separated(
+                padding: const EdgeInsets.all(8),
                 itemCount: _list.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 8),
                 itemBuilder: (c, i) {
                   final t = _list[i];
-                  return ListTile(
-                    title: Text(t.tableNo),
-                    subtitle: Text(
-                      t.label == null || t.label!.isEmpty ? '라벨 없음 · 숨김: ${t.hidden}' : t.label!,
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('숨김', style: TextStyle(fontSize: 12)),
-                        Switch(
-                          value: t.hidden,
-                          onChanged: (v) {
-                            setState(() {
-                              _list[i] = _copy(t, hidden: v);
-                            });
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () => _editRow(i),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.qr_code_2),
-                          tooltip: 'QR',
-                          onPressed: () => _showQr(sid, t),
-                        ),
-                      ],
+                  final url = _buildCustomerUrl(sid, t.tableNo);
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '테이블 ${t.tableNo}',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            t.label == null || t.label!.isEmpty
+                                ? '라벨 없음 · 숨김: ${t.hidden}'
+                                : t.label!,
+                          ),
+                          const SizedBox(height: 4),
+                          SelectableText(
+                            url,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              const Text('숨김'),
+                              Switch(
+                                value: t.hidden,
+                                onChanged: (v) {
+                                  setState(() {
+                                    _list[i] = _copy(t, hidden: v);
+                                  });
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.edit),
+                                tooltip: '편집',
+                                onPressed: () => _editRow(i),
+                              ),
+                              FilledButton.tonalIcon(
+                                onPressed: () => _showQr(sid, t),
+                                icon: const Icon(Icons.qr_code_2),
+                                label: const Text('QR 보기'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },
