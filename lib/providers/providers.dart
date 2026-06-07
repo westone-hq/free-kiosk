@@ -5,3 +5,4 @@ export 'catalog_providers.dart';
 export 'menu_filter_provider.dart';
 export 'order_providers.dart';
 export 'scoped_store_provider.dart';
+export 'customer_cart_provider.dart';
