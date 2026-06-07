@@ -26,6 +26,10 @@ class StoreScope extends ConsumerStatefulWidget {
 
 class _StoreScopeState extends ConsumerState<StoreScope> {
   void _applyScope() {
+    final current = ref.read(scopedStoreIdProvider);
+    if (current == widget.storeId) {
+      return;
+    }
     ref.read(scopedStoreIdProvider.notifier).state = widget.storeId;
     ref.invalidate(storeConfigProvider);
     ref.invalidate(storeProvider);

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:kiosk/models/models.dart';
 import 'package:kiosk/providers/providers.dart';
 import 'package:kiosk/ui/admin/admin_settings_tab.dart';
 import 'package:kiosk/ui/admin/admin_store_tab.dart';
@@ -56,10 +57,18 @@ class AdminHomeShell extends ConsumerWidget {
           NavigationRail(
             selectedIndex: index,
             onDestinationSelected: (i) {
-              // 3 — 주방: 같은 창에서 `/kitchen`(GoRouter). 예전처럼 새 탭만 안내하면
-              // 주소만 바꿨을 때 관리자 레일이 보이는 혼선이 생길 수 있음.
+              // 3 — 주방: 같은 창에서 GoRouter path 로 이동
               if (i == 3) {
                 context.go('/kitchen?storeId=$storeId');
+                return;
+              }
+              // 4 — 손님: /customer 로 이동 (관리자 레일 안에 두면 주문 화면이 안 보임)
+              if (i == 4) {
+                final table =
+                    ref.read(appSettingsProvider).tableNo ?? '1';
+                context.go(
+                  '/customer?storeId=$storeId&tableNo=$table',
+                );
                 return;
               }
               ref.read(adminHomeTabIndexProvider.notifier).state = i;
@@ -154,33 +163,215 @@ class _TabOrdersPos extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final list = ref.watch(unpaidOrdersProvider);
-    if (list.isEmpty) {
+    final sorted = [...list]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    if (sorted.isEmpty) {
       return Center(
-        child: Text(
-          '표시할 미완·미취소 주문이 없습니다.\n(2.4 `unpaidOrdersProvider`)',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 48,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '진행 중인 주문이 없습니다',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '손님이 주문하면 여기에 표시됩니다',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
       );
     }
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: list.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 8),
-      itemBuilder: (context, i) {
-        final o = list[i];
-        return Card(
-          child: ListTile(
-            title: Text('${o.id}  ·  테이블 ${o.tableNo}'),
-            subtitle: Text(
-              '상태: ${o.status.name}  ·  매장 ${o.storeId} (세션: $storeId)',
+
+    return RefreshIndicator(
+      onRefresh: () =>
+          ref.read(activeOrdersProvider.notifier).reload(),
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: sorted.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
+        itemBuilder: (context, i) => _ActiveOrderCard(order: sorted[i]),
+      ),
+    );
+  }
+}
+
+String _orderStatusLabel(OrderStatus status) {
+  return switch (status) {
+    OrderStatus.received => '접수',
+    OrderStatus.cooking => '조리 중',
+    OrderStatus.done => '완료',
+    OrderStatus.paid => '결제 완료',
+    OrderStatus.cancelled => '취소',
+  };
+}
+
+Color _orderStatusColor(OrderStatus status, ColorScheme scheme) {
+  return switch (status) {
+    OrderStatus.received => scheme.primaryContainer,
+    OrderStatus.cooking => scheme.tertiaryContainer,
+    OrderStatus.done => scheme.secondaryContainer,
+    OrderStatus.paid => scheme.surfaceContainerHighest,
+    OrderStatus.cancelled => scheme.errorContainer,
+  };
+}
+
+Color _orderStatusOnColor(OrderStatus status, ColorScheme scheme) {
+  return switch (status) {
+    OrderStatus.received => scheme.onPrimaryContainer,
+    OrderStatus.cooking => scheme.onTertiaryContainer,
+    OrderStatus.done => scheme.onSecondaryContainer,
+    OrderStatus.paid => scheme.onSurfaceVariant,
+    OrderStatus.cancelled => scheme.onErrorContainer,
+  };
+}
+
+String _formatOrderTime(DateTime dt) {
+  final h = dt.hour.toString().padLeft(2, '0');
+  final m = dt.minute.toString().padLeft(2, '0');
+  return '$h:$m';
+}
+
+int _orderTotal(OrderHeader order) {
+  return order.lines.fold<int>(0, (sum, line) => sum + line.lineTotal);
+}
+
+class _ActiveOrderCard extends StatelessWidget {
+  const _ActiveOrderCard({required this.order});
+
+  final OrderHeader order;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final total = _orderTotal(order);
+    final itemCount =
+        order.lines.fold<int>(0, (sum, line) => sum + line.quantity);
+
+    return Card(
+      elevation: 0,
+      color: scheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: scheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: scheme.primary,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '테이블 ${order.tableNo}',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: scheme.onPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Chip(
+                  label: Text(_orderStatusLabel(order.status)),
+                  backgroundColor: _orderStatusColor(order.status, scheme),
+                  labelStyle: TextStyle(
+                    color: _orderStatusOnColor(order.status, scheme),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+                const Spacer(),
+                Text(
+                  _formatOrderTime(order.createdAt),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
-            isThreeLine: true,
-          ),
-        );
-      },
+            const SizedBox(height: 12),
+            ...order.lines.map(
+              (line) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        line.nameSnapshot,
+                        style: theme.textTheme.bodyLarge,
+                      ),
+                    ),
+                    Text(
+                      '×${line.quantity}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '${line.lineTotal}원',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (order.note != null && order.note!.trim().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                '요청: ${order.note}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+            const Divider(height: 24),
+            Row(
+              children: [
+                Text(
+                  '$itemCount개',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '합계 $total원',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: scheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -342,7 +533,7 @@ Future<void> _openUri(Uri uri) async {
   }
   final ok = await launchUrl(
     uri,
-    webOnlyWindowName: '_blank',
+    webOnlyWindowName: kIsWeb ? '_blank' : null,
   );
   if (!ok) {
     debugPrint('launchUrl failed: $uri');

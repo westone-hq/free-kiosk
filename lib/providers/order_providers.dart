@@ -30,22 +30,26 @@ class ActiveOrdersController extends StateNotifier<List<OrderHeader>> {
     await _load();
   }
 
+  /// 저장본을 먼저 읽어 합칩니다. (여러 탭/창에서 주문할 때 덮어쓰기 방지)
   Future<void> addOrder(OrderHeader order) async {
-    state = [...state, order];
+    final doc = await _service.loadActiveOrders();
+    state = [...doc.orders, order];
     await _save();
   }
 
   Future<void> removeOrder(String orderId) async {
+    final doc = await _service.loadActiveOrders();
     state = [
-      for (final order in state)
+      for (final order in doc.orders)
         if (order.id != orderId) order,
     ];
     await _save();
   }
 
   Future<void> setStatus(String orderId, OrderStatus nextStatus) async {
+    final doc = await _service.loadActiveOrders();
     state = [
-      for (final order in state)
+      for (final order in doc.orders)
         if (order.id == orderId)
           OrderHeader(
             id: order.id,
