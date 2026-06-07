@@ -3,6 +3,7 @@ export 'asset_paths.dart';
 export 'catalog_loader.dart';
 export 'json_from_asset.dart';
 export 'local_db.dart';
+export 'notification_sound_service.dart';
 export 'order_book_service.dart';
 export 'order_documents.dart';
 export 'order_persistence.dart';

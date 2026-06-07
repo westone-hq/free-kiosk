@@ -1,5 +1,5 @@
 name: kiosk
-description: "free-kiosk ebook 7장 완료본"
+description: "free-kiosk ebook 8장 완료본"
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -21,6 +21,7 @@ dependencies:
   go_router: ^14.6.2
   qr: ^3.0.2
   qr_flutter: ^4.1.0
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -36,3 +37,6 @@ flutter:
     - data/orders/active.json
     - data/history/order_archive.json
     - data/images_menu/
+    - assets/sounds/chime1.wav
+    - assets/sounds/chime2.wav
+    - assets/sounds/buzz.wav

@@ -2,31 +2,101 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kiosk/providers/providers.dart';
+import 'package:kiosk/services/notification_sound_service.dart';
 
-const _kSoundOptions = <String?>[null, 'chime1', 'chime2', 'buzz'];
+class _SoundOption {
+  const _SoundOption(this.id, this.label);
+  final String? id;
+  final String label;
+}
 
-class AdminSettingsTab extends ConsumerWidget {
+const _kSoundOptions = <_SoundOption>[
+  _SoundOption(null, '(없음 — 소리 안 남)'),
+  _SoundOption('chime1', '차임 1'),
+  _SoundOption('chime2', '차임 2 (길게)'),
+  _SoundOption('buzz', '짧은 버즈'),
+];
+
+class AdminSettingsTab extends ConsumerStatefulWidget {
   const AdminSettingsTab({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminSettingsTab> createState() => _AdminSettingsTabState();
+}
+
+class _AdminSettingsTabState extends ConsumerState<AdminSettingsTab> {
+  late final TextEditingController _tableCtrl;
+  bool _tableCtrlSynced = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tableCtrl = TextEditingController(text: '1');
+  }
+
+  @override
+  void dispose() {
+    _tableCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _previewSound() async {
+    final s = ref.read(appSettingsProvider);
+    await NotificationSoundService.play(
+      soundId: s.soundId,
+      volume: s.volume,
+    );
+    if (!mounted) {
+      return;
+    }
+    if (s.soundId == null || s.soundId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('알림 음을 먼저 고르세요.')),
+      );
+      return;
+    }
+    if (s.volume <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('볼륨이 0% 입니다. 슬라이더를 올려 보세요.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final s = ref.watch(appSettingsProvider);
     final c = ref.read(appSettingsProvider.notifier);
+    final session = ref.watch(adminSessionProvider);
+    final sessionStoreId = session.storeId;
+
+    if (!_tableCtrlSynced) {
+      _tableCtrlSynced = true;
+      _tableCtrl.text = s.tableNo ?? '1';
+    }
 
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        const Text('알림·볼륨(기기별)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          '알림·볼륨 (기기별)',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '주방 화면에서 새 주문이 들어오면 선택한 소리가 납니다. '
+          '같은 PC·브라우저 시스템 볼륨도 확인하세요.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
         const SizedBox(height: 16),
-        const Text('알림 음(식별자) — 3.5.4에서 실제 파일과 연결 가능'),
+        const Text('알림 음'),
         DropdownButton<String?>(
           isExpanded: true,
           value: s.soundId,
           items: _kSoundOptions
               .map(
-                (id) => DropdownMenuItem<String?>(
-                  value: id,
-                  child: Text(id ?? '(없음)'),
+                (o) => DropdownMenuItem<String?>(
+                  value: o.id,
+                  child: Text(o.label),
                 ),
               )
               .toList(),
@@ -38,26 +108,66 @@ class AdminSettingsTab extends ConsumerWidget {
             }
           },
         ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: _previewSound,
+          icon: const Icon(Icons.volume_up),
+          label: const Text('들어보기'),
+        ),
         const SizedBox(height: 24),
-        const Text('볼륨(0.0~1.0)'),
+        const Text('볼륨 (0~100%)'),
         Slider(
           value: s.volume,
-          onChanged: (v) {
-            c.setVolume(v);
-          },
+          onChanged: c.setVolume,
         ),
-        Text('${(s.volume * 100).round()} %', style: Theme.of(context).textTheme.bodySmall),
+        Text(
+          '${(s.volume * 100).round()} %',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
         const SizedBox(height: 24),
         const Divider(),
-        const Text('2.4 AppSettings(참고)', style: TextStyle(fontWeight: FontWeight.w600)),
+        const Text(
+          '손님 탭 · URL 기본값',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 8),
         ListTile(
-          title: const Text('storeId'),
-          subtitle: Text(s.storeId ?? '(없음)'),
+          contentPadding: EdgeInsets.zero,
+          title: const Text('storeId (로그인 매장)'),
+          subtitle: Text(sessionStoreId ?? '(로그인 필요)'),
         ),
-        ListTile(
-          title: const Text('tableNo'),
-          subtitle: Text(s.tableNo ?? '(없음)'),
+        TextField(
+          controller: _tableCtrl,
+          decoration: const InputDecoration(
+            labelText: 'tableNo — 손님 탭(4번) 기본 테이블',
+            hintText: '1',
+            helperText: '4번 탭·「손님 URL 열기」에 쓰입니다.',
+          ),
+          onSubmitted: (v) {
+            final t = v.trim();
+            if (t.isEmpty) {
+              c.clearTableNo();
+            } else {
+              c.setTableNo(t);
+            }
+          },
+        ),
+        const SizedBox(height: 8),
+        FilledButton.tonal(
+          onPressed: () {
+            final t = _tableCtrl.text.trim();
+            if (t.isEmpty) {
+              c.clearTableNo();
+            } else {
+              c.setTableNo(t);
+            }
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('테이블 번호를 "$t"(으)로 저장했습니다.')),
+              );
+            }
+          },
+          child: const Text('tableNo 저장'),
         ),
       ],
     );

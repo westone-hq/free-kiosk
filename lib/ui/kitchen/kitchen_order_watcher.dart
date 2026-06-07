@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kiosk/models/models.dart';
 import 'package:kiosk/providers/providers.dart';
+import 'package:kiosk/services/notification_sound_service.dart';
 
-/// `activeOrdersProvider` 변화를 보고 새 주문이 들어오면 알림(시스템 사운드 + 콜백).
+/// `activeOrdersProvider` 변화를 보고 새 주문이 들어오면 알림(에셋 사운드 + 콜백).
 class KitchenOrderWatcher extends ConsumerStatefulWidget {
   const KitchenOrderWatcher({
     super.key,
@@ -28,11 +28,10 @@ class _KitchenOrderWatcherState extends ConsumerState<KitchenOrderWatcher> {
       return;
     }
     final settings = ref.read(appSettingsProvider);
-    if (settings.soundId != null && settings.soundId!.isNotEmpty) {
-      if (settings.volume > 0) {
-        SystemSound.play(SystemSoundType.alert);
-      }
-    }
+    NotificationSoundService.play(
+      soundId: settings.soundId,
+      volume: settings.volume,
+    );
     widget.onNewOrdersDetected(newcomers);
   }
 
