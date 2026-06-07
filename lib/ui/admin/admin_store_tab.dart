@@ -59,19 +59,69 @@ class _AdminStoreTabState extends ConsumerState<AdminStoreTab> {
     if (!mounted) {
       return;
     }
+    // 편집 중인 draft(_menus)는 유지합니다. invalidate 직후 provider가
+    // 아직 빈 캐시를 주면 _inited=false 재초기화 때문에 메뉴가 사라집니다.
     ref.invalidate(storeConfigProvider);
     ref.invalidate(categoriesProvider);
     ref.invalidate(menuItemsProvider);
     ref.invalidate(filteredMenuItemsProvider);
     ref.invalidate(storeProvider);
-    setState(() {
-      _inited = false;
-    });
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('저장했습니다.')),
       );
     }
+  }
+
+  Future<void> _editCategory(int index) async {
+    final cat = _categories[index];
+    final nameCtrl = TextEditingController(text: cat.name);
+    final sortCtrl = TextEditingController(text: '${cat.sortOrder}');
+    final ok = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      builder: (ctx) => AlertDialog(
+        title: const Text('카테고리 수정'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(labelText: '이름'),
+            ),
+            TextField(
+              controller: sortCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: '정렬 순서'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('확인')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) {
+      nameCtrl.dispose();
+      sortCtrl.dispose();
+      return;
+    }
+    final name = nameCtrl.text.trim();
+    final sort = int.tryParse(sortCtrl.text.trim()) ?? cat.sortOrder;
+    nameCtrl.dispose();
+    sortCtrl.dispose();
+    if (name.isEmpty) {
+      return;
+    }
+    setState(() {
+      _categories[index] = Category(
+        id: cat.id,
+        name: name,
+        enabled: cat.enabled,
+        sortOrder: sort,
+      );
+    });
   }
 
   @override
@@ -132,22 +182,36 @@ class _AdminStoreTabState extends ConsumerState<AdminStoreTab> {
                                         _selectedCategoryId = cat.id;
                                       });
                                     },
-                                    trailing: IconButton(
-                                      icon: const Icon(Icons.delete_outline),
-                                      onPressed: () {
-                                        if (_menus.any((m) => m.categoryId == cat.id)) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('이 카테고리에 메뉴가 있으면 삭제할 수 없습니다.')),
-                                          );
-                                          return;
-                                        }
-                                        setState(() {
-                                          _categories.removeAt(i);
-                                          if (_selectedCategoryId == cat.id) {
-                                            _selectedCategoryId = _categories.isNotEmpty ? _categories.first.id : null;
-                                          }
-                                        });
-                                      },
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.edit_outlined),
+                                          tooltip: '이름 수정',
+                                          onPressed: () => _editCategory(i),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline),
+                                          tooltip: '삭제',
+                                          onPressed: () {
+                                            if (_menus.any((m) => m.categoryId == cat.id)) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('이 카테고리에 메뉴가 있으면 삭제할 수 없습니다.'),
+                                                ),
+                                              );
+                                              return;
+                                            }
+                                            setState(() {
+                                              _categories.removeAt(i);
+                                              if (_selectedCategoryId == cat.id) {
+                                                _selectedCategoryId =
+                                                    _categories.isNotEmpty ? _categories.first.id : null;
+                                              }
+                                            });
+                                          },
+                                        ),
+                                      ],
                                     ),
                                   );
                                 },
