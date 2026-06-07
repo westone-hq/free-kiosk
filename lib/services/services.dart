@@ -6,5 +6,7 @@ export 'local_db.dart';
 export 'order_book_service.dart';
 export 'order_documents.dart';
 export 'order_persistence.dart';
+export 'sales_calculator.dart';
+export 'sales_file_download.dart';
 export 'store_initializer.dart';
 export 'store_scoped_storage.dart';

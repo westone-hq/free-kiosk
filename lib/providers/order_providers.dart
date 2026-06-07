@@ -163,6 +163,26 @@ class ActiveOrdersController extends StateNotifier<List<OrderHeader>> {
     );
   }
 
+  Future<void> cancelOrder(String orderId) async {
+    await _syncFromDisk();
+    final order = _findOrder(orderId);
+    if (order == null || !_isOpen(order)) {
+      return;
+    }
+    await removeOrder(orderId);
+    await _appendArchive(
+      OrderHeader(
+        id: order.id,
+        storeId: order.storeId,
+        tableNo: order.tableNo,
+        status: OrderStatus.cancelled,
+        createdAt: order.createdAt,
+        note: order.note,
+        lines: order.lines,
+      ),
+    );
+  }
+
   Future<void> payOrderFull(String orderId) async {
     await _syncFromDisk();
     final order = _findOrder(orderId);

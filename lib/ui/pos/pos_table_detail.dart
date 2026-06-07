@@ -90,6 +90,36 @@ class _PosTableDetailBodyState extends ConsumerState<_PosTableDetailBody> {
     }
   }
 
+  Future<void> _cancel(OrderHeader order) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('주문 취소'),
+        content: Text('${order.id} 을(를) 취소하고 매출 취소 집계에 넣을까요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('아니오'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('취소 처리'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) {
+      return;
+    }
+    await ref.read(activeOrdersProvider.notifier).cancelOrder(order.id);
+    ref.invalidate(archiveOrdersProvider);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${order.id} 취소됨')),
+      );
+    }
+  }
+
   Future<void> _payPartial(OrderHeader order) async {
     final indexes = _selectedIndexesForOrder(order);
     if (indexes.isEmpty) {
@@ -225,6 +255,7 @@ class _PosTableDetailBodyState extends ConsumerState<_PosTableDetailBody> {
                               const SizedBox(height: 8),
                               Wrap(
                                 spacing: 8,
+                                runSpacing: 8,
                                 children: [
                                   FilledButton(
                                     onPressed: () => _payFull(order),
@@ -233,6 +264,10 @@ class _PosTableDetailBodyState extends ConsumerState<_PosTableDetailBody> {
                                   OutlinedButton(
                                     onPressed: () => _payPartial(order),
                                     child: const Text('선택 항목 결제'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => _cancel(order),
+                                    child: const Text('주문 취소'),
                                   ),
                                 ],
                               ),

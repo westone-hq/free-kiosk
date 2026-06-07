@@ -87,6 +87,7 @@ class PosTableGrid extends ConsumerWidget {
     final moveFrom = ref.watch(posMoveFromTableProvider);
 
     return tablesAsync.when(
+      skipLoadingOnReload: true,
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('$e')),
       data: (tables) {
@@ -147,6 +148,29 @@ class _FixedGrid extends StatelessWidget {
     return null;
   }
 
+  Widget _cell({
+    required String tableNo,
+    required String label,
+    required PosTableStatus status,
+    required int orderCount,
+    required bool visible,
+  }) {
+    return Visibility(
+      visible: visible,
+      maintainState: true,
+      maintainAnimation: true,
+      maintainSize: true,
+      child: PosTableCard(
+        tableNo: tableNo,
+        label: label,
+        status: status,
+        orderCount: orderCount,
+        moveSelected: moveFrom == tableNo,
+        onTap: () => onTap(tableNo),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const cols = 4;
@@ -157,24 +181,19 @@ class _FixedGrid extends StatelessWidget {
       final tableNo = '${i + 1}';
       final info = _infoFor(tableNo);
       if (info?.hidden == true) {
-        cells.add(const SizedBox.shrink());
+        cells.add(const SizedBox(height: 1, width: 1));
         continue;
       }
       final label = info?.label ?? '테이블 $tableNo';
       final tableOrders = ordersForTable(orders, tableNo);
       final status = computePosTableStatus(orders, storeId, tableNo);
-      if (!passesFilter(status, filter)) {
-        cells.add(const SizedBox.shrink());
-        continue;
-      }
       cells.add(
-        PosTableCard(
+        _cell(
           tableNo: tableNo,
           label: label,
           status: status,
           orderCount: tableOrders.length,
-          moveSelected: moveFrom == tableNo,
-          onTap: () => onTap(tableNo),
+          visible: passesFilter(status, filter),
         ),
       );
     }
@@ -190,6 +209,7 @@ class _FixedGrid extends StatelessWidget {
   }
 }
 
+/// gridX·gridY 좌표만큼 **딱 맞는** 배치도 (빈 4×4 칸을 억지로 늘리지 않음)
 class _CustomLayoutGrid extends StatelessWidget {
   const _CustomLayoutGrid({
     required this.storeId,
@@ -216,12 +236,19 @@ class _CustomLayoutGrid extends StatelessWidget {
     final placed = tables
         .where((t) => t.gridX != null && t.gridY != null)
         .toList(growable: false);
+    final unplaced = tables
+        .where((t) => t.gridX == null || t.gridY == null)
+        .toList(growable: false);
+
     if (placed.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
           child: Text(
-            '커스텀 배치를 쓰려면 tables.json 에 gridX·gridY 를 넣어 주세요.',
+            unplaced.isEmpty
+                ? '표시할 테이블이 없습니다.'
+                : '배치도를 쓰려면 테이블·QR 탭에서 gridX·gridY 를 넣거나,\n'
+                    '「행 추가」 시 좌표가 자동으로 붙습니다.',
             textAlign: TextAlign.center,
           ),
         ),
@@ -234,56 +261,102 @@ class _CustomLayoutGrid extends StatelessWidget {
       maxX = math.max(maxX, t.gridX!);
       maxY = math.max(maxY, t.gridY!);
     }
-    // 좌표가 2~3개만 있어도 4×4처럼 칸 크기가 유지되게 (빈 칸은 테두리만).
-    const minCols = 4;
-    const minRows = 4;
-    final cols = math.max(maxX + 1, minCols);
-    final rows = math.max(maxY + 1, minRows);
+    final cols = maxX + 1;
+    final rows = maxY + 1;
 
-    return GridView.builder(
-      padding: const EdgeInsets.all(12),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: cols,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        childAspectRatio: 1.05,
-      ),
-      itemCount: cols * rows,
-      itemBuilder: (context, index) {
-        final gx = index % cols;
-        final gy = index ~/ cols;
-        TableInfo? info;
-        for (final t in placed) {
-          if (t.gridX == gx && t.gridY == gy) {
-            info = t;
-            break;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 10.0;
+        const padding = 12.0;
+        const minCell = 80.0;
+        final innerW = constraints.maxWidth - padding * 2;
+        final cellSize = math.max(
+          minCell,
+          (innerW - spacing * (cols - 1)) / cols,
+        );
+        final totalW = cols * cellSize + spacing * (cols - 1);
+        final totalH = rows * cellSize + spacing * (rows - 1);
+
+        Widget tableAt(int gx, int gy) {
+          TableInfo? info;
+          for (final t in placed) {
+            if (t.gridX == gx && t.gridY == gy) {
+              info = t;
+              break;
+            }
           }
-        }
-        if (info == null) {
-          return DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outlineVariant,
+          if (info == null) {
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+                borderRadius: BorderRadius.circular(8),
               ),
-              borderRadius: BorderRadius.circular(8),
+            );
+          }
+          final tableNo = info.tableNo;
+          final label = info.label ?? '테이블 $tableNo';
+          final tableOrders = ordersForTable(orders, tableNo);
+          final status = computePosTableStatus(orders, storeId, tableNo);
+          return Visibility(
+            visible: passesFilter(status, filter),
+            maintainState: true,
+            maintainAnimation: true,
+            maintainSize: true,
+            child: PosTableCard(
+              tableNo: tableNo,
+              label: label,
+              status: status,
+              orderCount: tableOrders.length,
+              moveSelected: moveFrom == tableNo,
+              onTap: () => onTap(tableNo),
             ),
-            child: const SizedBox.expand(),
           );
         }
-        final tableNo = info.tableNo;
-        final label = info.label ?? '테이블 $tableNo';
-        final tableOrders = ordersForTable(orders, tableNo);
-        final status = computePosTableStatus(orders, storeId, tableNo);
-        if (!passesFilter(status, filter)) {
-          return const SizedBox.shrink();
+
+        final stackChildren = <Widget>[];
+        for (var gy = 0; gy < rows; gy++) {
+          for (var gx = 0; gx < cols; gx++) {
+            stackChildren.add(
+              Positioned(
+                left: gx * (cellSize + spacing),
+                top: gy * (cellSize + spacing),
+                width: cellSize,
+                height: cellSize,
+                child: tableAt(gx, gy),
+              ),
+            );
+          }
         }
-        return PosTableCard(
-          tableNo: tableNo,
-          label: label,
-          status: status,
-          orderCount: tableOrders.length,
-          moveSelected: moveFrom == tableNo,
-          onTap: () => onTap(tableNo),
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(padding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: totalW,
+                  height: totalH,
+                  child: Stack(children: stackChildren),
+                ),
+              ),
+              if (unplaced.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  '좌표 없음 (4×4에서만 번호로 표시): '
+                  '${unplaced.map((t) => t.tableNo).join(', ')}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ],
+          ),
         );
       },
     );

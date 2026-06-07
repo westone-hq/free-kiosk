@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kiosk/providers/providers.dart';
 
+import 'customer_cart_sheet.dart';
 import 'customer_menu_screen.dart';
 import 'order_submit.dart';
 
@@ -48,6 +49,15 @@ class CustomerOrderPage extends ConsumerWidget {
           appBar: AppBar(
             title: Text('${store.name} · 테이블 $tableNo'),
             actions: [
+              IconButton(
+                tooltip: '장바구니',
+                icon: Badge(
+                  isLabelVisible: cart.isNotEmpty,
+                  label: Text('${cart.length}'),
+                  child: const Icon(Icons.shopping_cart_outlined),
+                ),
+                onPressed: () => showCustomerCartSheet(context, ref),
+              ),
               IconButton(
                 tooltip: '이 테이블 진행 중 주문',
                 icon: const Icon(Icons.list_alt_outlined),

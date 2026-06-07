@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kiosk/providers/providers.dart';
+import 'package:kiosk/ui/admin/admin_sales_tab.dart';
 import 'package:kiosk/ui/admin/admin_settings_tab.dart';
 import 'package:kiosk/ui/admin/admin_store_tab.dart';
 import 'package:kiosk/ui/admin/admin_table_qr_tab.dart';
@@ -56,19 +57,17 @@ class AdminHomeShell extends ConsumerWidget {
           NavigationRail(
             selectedIndex: index,
             onDestinationSelected: (i) {
+              // 0 — POS · 3 — 주방: 같은 창에서 GoRouter 화면으로 (관리자 레일 혼선 방지).
               if (i == 0) {
                 context.go('/pos?storeId=$storeId');
                 return;
               }
-              // 3 — 주방: 같은 창에서 GoRouter path 로 이동
               if (i == 3) {
                 context.go('/kitchen?storeId=$storeId');
                 return;
               }
-              // 4 — 손님: /customer 로 이동 (관리자 레일 안에 두면 주문 화면이 안 보임)
               if (i == 4) {
-                final table =
-                    ref.read(appSettingsProvider).tableNo ?? '1';
+                final table = ref.read(appSettingsProvider).tableNo ?? '1';
                 context.go(
                   '/customer?storeId=$storeId&tableNo=$table',
                 );
@@ -142,9 +141,7 @@ class AdminHomeShell extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const _TabPlaceholder(
-                  message: '3.3에서 쌓이는 기록에 맞춰 차트(매출)를 둡니다.',
-                ),
+                AdminSalesTab(storeId: storeId),
                 _TabOpenKitchenUrl(storeId: storeId),
                 _TabOpenCustomerUrl(storeId: storeId),
                 const AdminSettingsTab(),
@@ -157,7 +154,7 @@ class AdminHomeShell extends ConsumerWidget {
   }
 }
 
-// --- 0) 1.4 /pos
+// --- 0) 1.4 /pos (레일 탭 시 context.go — 본문은 예외·직접 URL 진입용)
 class _TabOpenPosUrl extends ConsumerWidget {
   const _TabOpenPosUrl({required this.storeId});
 
@@ -171,29 +168,6 @@ class _TabOpenPosUrl extends ConsumerWidget {
       line1: '1.4에서 정한 path: /pos',
       line2: '열 URL: $u',
       onPressed: () => context.go('/pos?storeId=$storeId'),
-    );
-  }
-}
-
-// --- 2,3,6) 자리만
-class _TabPlaceholder extends StatelessWidget {
-  const _TabPlaceholder({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ),
     );
   }
 }
@@ -332,7 +306,7 @@ Future<void> _openUri(Uri uri) async {
   }
   final ok = await launchUrl(
     uri,
-    webOnlyWindowName: kIsWeb ? '_blank' : null,
+    webOnlyWindowName: '_blank',
   );
   if (!ok) {
     debugPrint('launchUrl failed: $uri');
