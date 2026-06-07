@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "store": {
+    "id": "store_001",
+    "name": "예시 카페",
+    "logoFile": "logo.png"
+  },
+  "categories": [
+    {
+      "id": "cat_default",
+      "name": "기본",
+      "enabled": true,
+      "sortOrder": 0
+    },
+    {
+      "id": "cat_drink",
+      "name": "음료",
+      "enabled": true,
+      "sortOrder": 1
+    }
+  ]
+}

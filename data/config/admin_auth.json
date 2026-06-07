@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "passwordSalt": "kiosk-2026-salt",
+  "passwordHashHex": "e4ebd7ac4f081c5f41ce7cc9513fe277066dadc50192b0aff320a3239bff984f"
+}
