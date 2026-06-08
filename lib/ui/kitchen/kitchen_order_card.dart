@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kiosk/models/models.dart';
+import 'package:kiosk/ui/common/kiosk_display_format.dart';
 
 import 'kitchen_line_actions.dart';
 
@@ -60,16 +61,11 @@ class _KitchenOrderCardState extends State<KitchenOrderCard>
     super.dispose();
   }
 
-  String _fmt(DateTime t) {
-    final local = t.toLocal();
-    String pad2(int n) => n.toString().padLeft(2, '0');
-    return '${pad2(local.hour)}:${pad2(local.minute)}:${pad2(local.second)}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final o = widget.order;
     final scheme = Theme.of(context).colorScheme;
+    final statusLabel = KioskDisplayFormat.orderStatus(o.status);
 
     return AnimatedBuilder(
       animation: _pulseCtrl,
@@ -92,41 +88,47 @@ class _KitchenOrderCardState extends State<KitchenOrderCard>
         );
       },
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 260, maxWidth: 300),
+        constraints: const BoxConstraints(minWidth: 260, maxWidth: 320),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
+              Text(
+                '테이블 ${o.tableNo}',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Chip(
-                    label: Text(
-                      '테이블 ${o.tableNo}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                    visualDensity: VisualDensity.compact,
+                    label: Text(statusLabel),
                   ),
-                  const SizedBox(width: 8),
-                  Chip(
-                    label: Text(
-                      o.status.name,
-                      style: TextStyle(color: scheme.primary),
-                    ),
+                  Text(
+                    KioskDisplayFormat.timeHms(o.createdAt),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                          color: scheme.onSurfaceVariant,
+                        ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                _fmt(o.createdAt),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontFamily: 'monospace',
-                    ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '주문 ${o.id}',
-                style: Theme.of(context).textTheme.labelSmall,
+              const SizedBox(height: 4),
+              Tooltip(
+                message: o.id,
+                child: Text(
+                  KioskDisplayFormat.orderLabel(o.id),
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                ),
               ),
               if (o.note != null && o.note!.trim().isNotEmpty) ...[
                 const SizedBox(height: 8),

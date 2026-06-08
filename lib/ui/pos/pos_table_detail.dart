@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kiosk/models/models.dart';
 import 'package:kiosk/providers/providers.dart';
+import 'package:kiosk/ui/common/kiosk_display_format.dart';
 
 /// 테이블 탭 → 주문 상세·결제 (6.3)
 Future<void> showPosTableDetail({
@@ -85,7 +86,7 @@ class _PosTableDetailBodyState extends ConsumerState<_PosTableDetailBody> {
     ref.invalidate(archiveOrdersProvider);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${order.id} 전체 결제 완료')),
+        SnackBar(content: Text('${KioskDisplayFormat.orderLabel(order.id)} 전체 결제 완료')),
       );
     }
   }
@@ -95,7 +96,7 @@ class _PosTableDetailBodyState extends ConsumerState<_PosTableDetailBody> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('주문 취소'),
-        content: Text('${order.id} 을(를) 취소하고 매출 취소 집계에 넣을까요?'),
+        content: Text('${KioskDisplayFormat.orderLabel(order.id)} 을(를) 취소하고 매출 취소 집계에 넣을까요?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -115,7 +116,7 @@ class _PosTableDetailBodyState extends ConsumerState<_PosTableDetailBody> {
     ref.invalidate(archiveOrdersProvider);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${order.id} 취소됨')),
+        SnackBar(content: Text('${KioskDisplayFormat.orderLabel(order.id)} 취소됨')),
       );
     }
   }
@@ -194,13 +195,38 @@ class _PosTableDetailBodyState extends ConsumerState<_PosTableDetailBody> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Text(
-                                '${order.id} · ${order.status.name}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      KioskDisplayFormat.orderLabel(order.id),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  Chip(
+                                    visualDensity: VisualDensity.compact,
+                                    label: Text(
+                                      KioskDisplayFormat.orderStatus(
+                                        order.status,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              Text('합계 ${_orderTotal(order)}원'),
+                              Text(
+                                '${KioskDisplayFormat.dateTime(order.createdAt)} · '
+                                '합계 ${_orderTotal(order)}원',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
+                              ),
                               const Divider(height: 16),
                               ...List.generate(order.lines.length, (li) {
                                 final line = order.lines[li];

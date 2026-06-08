@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kiosk/providers/providers.dart';
 import 'package:kiosk/services/notification_sound_service.dart';
+import 'package:kiosk/ui/common/kiosk_display_format.dart';
 
 class _SoundOption {
   const _SoundOption(this.id, this.label);
@@ -130,12 +131,46 @@ class _AdminSettingsTabState extends ConsumerState<AdminSettingsTab> {
           '손님 탭 · URL 기본값',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
-        const SizedBox(height: 8),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('storeId (로그인 매장)'),
-          subtitle: Text(sessionStoreId ?? '(로그인 필요)'),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '로그인 매장',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 6),
+                if (sessionStoreId == null)
+                  Text(
+                    '(로그인 필요)',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  )
+                else ...[
+                  Text(
+                    KioskDisplayFormat.storeShort(sessionStoreId),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  SelectableText(
+                    sessionStoreId,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
+        const SizedBox(height: 16),
         TextField(
           controller: _tableCtrl,
           decoration: const InputDecoration(

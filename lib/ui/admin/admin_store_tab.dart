@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kiosk/models/models.dart';
 import 'package:kiosk/providers/providers.dart';
 import 'package:kiosk/services/services.dart';
+import 'package:kiosk/ui/common/kiosk_display_format.dart';
 
 /// 3.3: store.json + menu_items.json 편집 → saveStoreConfig / saveMenuItems
 class AdminStoreTab extends ConsumerStatefulWidget {
@@ -111,23 +112,44 @@ class _AdminStoreTabState extends ConsumerState<AdminStoreTab> {
               children: [
                 Padding(
                   padding: const EdgeInsets.all(8),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      FilledButton(
-                        onPressed: _saveToDisk,
-                        child: const Text('디스크에 저장'),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          FilledButton(
+                            onPressed: _saveToDisk,
+                            child: const Text('디스크에 저장'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: _addCategory,
+                            icon: const Icon(Icons.add),
+                            label: const Text('카테고리 추가'),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        onPressed: _addCategory,
-                        icon: const Icon(Icons.add),
-                        label: const Text('카테고리 추가'),
-                      ),
-                      const SizedBox(width: 8),
-                      Text('매장: ${_store?.name ?? ""} (id: ${_store?.id})'),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextFormField(
+                      if (_store != null) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          _store!.name,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        Text(
+                          '매장 코드 ${KioskDisplayFormat.storeShort(_store!.id)}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      TextFormField(
                           initialValue: _store?.address ?? '',
                           decoration: const InputDecoration(
                             labelText: '주소',
@@ -148,7 +170,6 @@ class _AdminStoreTabState extends ConsumerState<AdminStoreTab> {
                             });
                           },
                         ),
-                      ),
                     ],
                   ),
                 ),

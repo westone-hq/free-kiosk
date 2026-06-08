@@ -56,20 +56,29 @@ class PosTableCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: border,
           ),
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 posTableStatusLabel(status),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12,
                   color: scheme.onSurfaceVariant,
@@ -79,6 +88,8 @@ class PosTableCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '주문 $orderCount건',
+                  maxLines: 1,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 11),
                 ),
               ],

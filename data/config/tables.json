@@ -1,21 +1,17 @@
 {
   "version": 1,
   "tables": [
-    { "tableNo": "1", "label": "창가 1", "gridX": 0, "gridY": 0 },
-    { "tableNo": "2", "label": "테이블 2", "gridX": 1, "gridY": 0 },
-    { "tableNo": "3", "label": "테이블 3", "gridX": 2, "gridY": 0 },
-    { "tableNo": "4", "label": "테이블 4", "gridX": 3, "gridY": 0 },
-    { "tableNo": "5", "label": "5번 테이블", "gridX": 0, "gridY": 1 },
-    { "tableNo": "6", "label": "테이블 6", "gridX": 1, "gridY": 1 },
-    { "tableNo": "7", "label": "테이블 7", "gridX": 2, "gridY": 1 },
-    { "tableNo": "8", "label": "테이블 8", "gridX": 3, "gridY": 1 },
-    { "tableNo": "9", "label": "테이블 9", "gridX": 0, "gridY": 2 },
-    { "tableNo": "10", "label": "테이블 10", "gridX": 1, "gridY": 2 },
-    { "tableNo": "11", "label": "테이블 11", "gridX": 2, "gridY": 2 },
-    { "tableNo": "12", "label": "테이블 12", "gridX": 3, "gridY": 2 },
-    { "tableNo": "13", "label": "테이블 13", "gridX": 0, "gridY": 3 },
-    { "tableNo": "14", "label": "테이블 14", "gridX": 1, "gridY": 3 },
-    { "tableNo": "15", "label": "테이블 15", "gridX": 2, "gridY": 3 },
-    { "tableNo": "16", "label": "테이블 16", "gridX": 3, "gridY": 3 }
+    {
+      "tableNo": "1",
+      "label": "창가 1",
+      "gridX": 0,
+      "gridY": 0
+    },
+    {
+      "tableNo": "5",
+      "label": "5번 테이블",
+      "gridX": 1,
+      "gridY": 0
+    }
   ]
 }

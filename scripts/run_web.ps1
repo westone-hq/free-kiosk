@@ -47,12 +47,35 @@ function Read-SavedPort {
     return $null
 }
 
+function Get-PythonLaunch {
+    $py = Get-Command py -ErrorAction SilentlyContinue
+    if ($py) {
+        return @{ Exe = "py"; Prefix = @("-3") }
+    }
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if ($python) {
+        try {
+            $null = & python -c "import sys" 2>$null
+            if ($LASTEXITCODE -eq 0) {
+                return @{ Exe = "python"; Prefix = @() }
+            }
+        } catch {}
+    }
+    throw "Python 3가 필요합니다. https://www.python.org/downloads/ 설치 후 다시 실행하세요."
+}
+
 function Start-StorageServer {
     Stop-PortListeners $StoragePort
-    $job = Start-Process -FilePath "python" `
-        -ArgumentList @("tools/file_storage_server.py", "--port", "$StoragePort") `
+    $py = Get-PythonLaunch
+    $args = @($py.Prefix + @("tools/file_storage_server.py", "--port", "$StoragePort"))
+    $job = Start-Process -FilePath $py.Exe `
+        -ArgumentList $args `
         -PassThru -WindowStyle Hidden
-    Start-Sleep -Milliseconds 500
+    Start-Sleep -Milliseconds 800
+    $listening = netstat -ano | Select-String "LISTENING" | Select-String ":$StoragePort\s"
+    if (-not $listening) {
+        throw "저장 서버(포트 $StoragePort) 시작 실패. Python/py 설치를 확인하세요."
+    }
     return $job
 }
 

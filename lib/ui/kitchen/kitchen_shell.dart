@@ -11,6 +11,7 @@ import 'package:kiosk/ui/common/access_message_card.dart';
 import 'kitchen_auth_guard.dart';
 import 'kitchen_order_watcher.dart';
 import 'kitchen_orders_strip.dart';
+import 'package:kiosk/ui/common/kiosk_display_format.dart';
 
 /// Part 5 — 주방 메인 화면 (가드·상단 시간·하단 이력 토글)
 class KitchenShell extends ConsumerStatefulWidget {
@@ -25,6 +26,7 @@ class KitchenShell extends ConsumerStatefulWidget {
 
 class _KitchenShellState extends ConsumerState<KitchenShell> {
   Timer? _clockTimer;
+  Timer? _syncTimer;
   DateTime _now = DateTime.now();
   bool _showArchive = false;
   final Set<String> _pulseIds = {};
@@ -37,11 +39,23 @@ class _KitchenShellState extends ConsumerState<KitchenShell> {
         setState(() => _now = DateTime.now());
       }
     });
+    // 손님 탭(다른 Chrome 창)에서 주문하면 디스크만 바뀜 → 주기적으로 다시 읽기
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _syncTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) {
+          ref.read(activeOrdersProvider.notifier).reload();
+        }
+      });
+    });
   }
 
   @override
   void dispose() {
     _clockTimer?.cancel();
+    _syncTimer?.cancel();
     super.dispose();
   }
 
@@ -226,9 +240,12 @@ class _KitchenArchiveBody extends ConsumerWidget {
           itemBuilder: (context, i) {
             final o = mine[i];
             return ListTile(
-              title: Text('테이블 ${o.tableNo} · ${o.id}'),
+              title: Text(
+                '테이블 ${o.tableNo} · ${KioskDisplayFormat.orderShort(o.id)}',
+              ),
               subtitle: Text(
-                '${o.status.name} · ${o.lines.length}줄 · ${o.createdAt.toLocal()}',
+                '${KioskDisplayFormat.orderStatus(o.status)} · '
+                '${o.lines.length}줄 · ${KioskDisplayFormat.dateTime(o.createdAt)}',
               ),
             );
           },

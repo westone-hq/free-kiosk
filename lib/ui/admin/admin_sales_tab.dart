@@ -4,6 +4,7 @@ import 'package:kiosk/models/models.dart';
 import 'package:kiosk/providers/providers.dart';
 import 'package:kiosk/services/sales_calculator.dart';
 import 'package:kiosk/services/sales_file_download.dart';
+import 'package:kiosk/ui/common/kiosk_display_format.dart';
 
 /// 관리자 2번 탭 — 매출 통계 (7.1~7.4)
 class AdminSalesTab extends ConsumerWidget {
@@ -263,11 +264,30 @@ class _OrderTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        title: Text('${order.id} · 테이블 ${order.tableNo}'),
-        subtitle: Text(
-          '${order.createdAt.toLocal()} · $lines',
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        title: Text(
+          '테이블 ${order.tableNo} · ${KioskDisplayFormat.orderShort(order.id)}',
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                KioskDisplayFormat.dateTime(order.createdAt),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                lines,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -278,7 +298,7 @@ class _OrderTile extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             Text(
-              order.status.name,
+              KioskDisplayFormat.orderStatus(order.status),
               style: TextStyle(color: statusColor, fontSize: 12),
             ),
           ],
