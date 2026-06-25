@@ -1,27 +1,22 @@
-// lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:kiosk/router/app_router.dart';
 
 void main() {
-  runApp(
-    const ProviderScope(
-      child: _KioskMaterialApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
-class _KioskMaterialApp extends StatelessWidget {
-  const _KioskMaterialApp();
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      routerConfig: kioskRouter,
-      debugShowCheckedModeBanner: false,
+    return MaterialApp(
+      title: 'Kiosk',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
+      ),
+      home: const Scaffold(
+        body: Center(child: Text('Kiosk App')),
       ),
     );
   }
