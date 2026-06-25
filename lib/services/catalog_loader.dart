@@ -6,7 +6,6 @@ import 'package:kiosk/models/models.dart';
 import 'asset_paths.dart';
 import 'order_persistence.dart';
 import 'json_from_asset.dart';
-import 'store_scoped_storage.dart';
 
 /// `store.json` 한 파일을 풀었을 때의 모양 (파일 버전 + 매장 + 카테고리 배열)
 class StoreConfigData {
@@ -37,35 +36,23 @@ StoreConfigData storeConfigDataFromMap(Map<String, dynamic> map) {
   );
 }
 
-Future<StoreConfigData> loadStoreConfig({required String storeId}) async {
-  final k = storeScopedKey(storeId, 'store_config.json');
+Future<StoreConfigData> loadStoreConfig() async {
+  const k = 'store_config.json';
   final p = await readAppTextFile(k);
   if (p != null && p.trim().isNotEmpty) {
     return storeConfigDataFromMap(jsonDecode(p) as Map<String, dynamic>);
   }
-
   final map = await loadRootJsonMap(AssetPaths.storeJson);
-  final asset = storeConfigDataFromMap(map);
-  if (asset.store.id == storeId) {
-    return asset;
-  }
-
-  throw StateError('매장 데이터가 없습니다: $storeId');
+  return storeConfigDataFromMap(map);
 }
 
-Future<void> saveStoreConfig(
-  StoreConfigData data, {
-  required String storeId,
-}) async {
+Future<void> saveStoreConfig(StoreConfigData data) async {
   final map = {
     'version': data.fileVersion,
     'store': data.store.toJson(),
     'categories': data.categories.map((c) => c.toJson()).toList(),
   };
-  await writeAppTextFile(
-    storeScopedKey(storeId, 'store_config.json'),
-    jsonEncode(map),
-  );
+  await writeAppTextFile('store_config.json', jsonEncode(map));
 }
 
 List<MenuItem> _menuListFromMap(Map<String, dynamic> map) {
@@ -75,35 +62,25 @@ List<MenuItem> _menuListFromMap(Map<String, dynamic> map) {
       .toList(growable: false);
 }
 
-Future<List<MenuItem>> loadMenuItems({required String storeId}) async {
-  final k = storeScopedKey(storeId, 'menu_items.json');
+Future<List<MenuItem>> loadMenuItems() async {
+  const k = 'menu_items.json';
   final p = await readAppTextFile(k);
   if (p != null && p.trim().isNotEmpty) {
     return _menuListFromMap(jsonDecode(p) as Map<String, dynamic>);
   }
-
   final map = await loadRootJsonMap(AssetPaths.menuItemsJson);
-  final config = await loadRootJsonMap(AssetPaths.storeJson);
-  final assetStoreId = (config['store'] as Map?)?['id'] as String?;
-  if (assetStoreId == storeId) {
-    return _menuListFromMap(map);
-  }
-  return const [];
+  return _menuListFromMap(map);
 }
 
 Future<void> saveMenuItems(
   List<MenuItem> items, {
   required int fileVersion,
-  required String storeId,
 }) async {
   final map = {
     'version': fileVersion,
     'items': items.map((e) => e.toJson()).toList(),
   };
-  await writeAppTextFile(
-    storeScopedKey(storeId, 'menu_items.json'),
-    jsonEncode(map),
-  );
+  await writeAppTextFile('menu_items.json', jsonEncode(map));
 }
 
 class TablesDocument {
@@ -127,30 +104,20 @@ class TablesDocument {
   }
 }
 
-Future<List<TableInfo>> loadTables({required String storeId}) async {
-  final k = storeScopedKey(storeId, 'tables.json');
+Future<List<TableInfo>> loadTables() async {
+  const k = 'tables.json';
   final p = await readAppTextFile(k);
   if (p != null && p.trim().isNotEmpty) {
     return TablesDocument.fromJson(jsonDecode(p) as Map<String, dynamic>).tables;
   }
-
   final map = await loadRootJsonMap(AssetPaths.tablesJson);
-  final storeMap = await loadRootJsonMap(AssetPaths.storeJson);
-  final assetStoreId = (storeMap['store'] as Map?)?['id'] as String?;
-  if (assetStoreId == storeId) {
-    return TablesDocument.fromJson(map).tables;
-  }
-  return const [];
+  return TablesDocument.fromJson(map).tables;
 }
 
 Future<void> saveTables(
   List<TableInfo> tables, {
   required int fileVersion,
-  required String storeId,
 }) async {
   final doc = TablesDocument(version: fileVersion, tables: tables);
-  await writeAppTextFile(
-    storeScopedKey(storeId, 'tables.json'),
-    jsonEncode(doc.toJson()),
-  );
+  await writeAppTextFile('tables.json', jsonEncode(doc.toJson()));
 }

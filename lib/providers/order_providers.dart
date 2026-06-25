@@ -3,15 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kiosk/models/models.dart';
 import 'package:kiosk/services/services.dart';
 
-import 'scoped_store_provider.dart';
-
-// 주문 읽기/저장 서비스를 provider로 노출 (현재 scoped storeId 기준)
 final orderBookServiceProvider = Provider<OrderBookService>((ref) {
-  final storeId = ref.watch(scopedStoreIdProvider);
-  if (storeId == null || storeId.isEmpty) {
-    return OrderBookService(storeId: '_unset');
-  }
-  return OrderBookService(storeId: storeId);
+  return OrderBookService();
 });
 
 class ActiveOrdersController extends StateNotifier<List<OrderHeader>> {
