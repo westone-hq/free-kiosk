@@ -1,11 +1,11 @@
 name: kiosk
-description: "free-kiosk ebook 3장 완료본"
+description: "free-kiosk ebook 4장 완료본"
 publish_to: 'none'
 
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.8.0
+  sdk: ^3.11.1
 
 dependencies:
   flutter:
